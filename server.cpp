@@ -1,3 +1,5 @@
+#include "tcp_server.h"
+
 #include <iostream>
 #include <string>
 
@@ -11,10 +13,11 @@ int main (int argc, char* argv[]) {
     return 0;
   }
 
-  short portnum = atoi(argv[1]);
+  unsigned short portnum = atoi(argv[1]);
 
   //cout << portnum << endl;
 
-  
+  TCP_server server = TCP_server(portnum);
+  server.startServer();
 
 }

@@ -1,22 +1,23 @@
-#ifndef TCP_SERVER_H
-#define TCP_SERVER_H
+#ifndef TCP_CLIENT_H
+#define TCP_CLIENT_H
 
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
 
-class TCP_server {
+class TCP_client {
 public:
-  TCP_server();
-  TCP_server(unsigned short p);
+  TCP_client();
+  TCP_client(char* h, unsigned short p);
 
-  void startServer();
+  void sendMessage();
 
-  ~TCP_server();
+  ~TCP_client();
 
 private:
   void createSocket();
 
+  char* hostname;
   unsigned short portnum;
 
   int serv_fd;

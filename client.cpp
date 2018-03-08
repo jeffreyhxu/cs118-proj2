@@ -1,3 +1,5 @@
+#include "tcp_client.h"
+
 #include <iostream>
 #include <string>
 
@@ -11,10 +13,13 @@ int main (int argc, char* argv[]) {
     return 0;
   }
 
-  string hostname = argv[1];
-  short portnum = atoi(argv[2]);
-  string filename = argv[3];
+  char* hostname = argv[1];
+  unsigned short portnum = atoi(argv[2]);
+  char* filename = argv[3];
 
   //cerr << hostname << endl << portnum << endl << filename << endl;
+
+  TCP_client client = TCP_client(hostname, portnum);
+  client.sendMessage();
 
 }
