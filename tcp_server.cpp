@@ -1,7 +1,9 @@
 #include "tcp_server.h"
+#include "packet.h"
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include <string.h>
 #include <stdio.h>
@@ -11,9 +13,13 @@
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
 
+#include <unistd.h>
+
+#define MAX_PACKET_SIZE 1024        // SPEC
+#define MAX_MSG_SIZE 960            // 1024 - 64 FOR TCP HEADER
+
 using namespace std;
 
-#include <unistd.h>
 
 TCP_server::TCP_server() {
 
@@ -52,11 +58,26 @@ void TCP_server::startServer() {
   cout << "Server started..." << endl;
 
   int recv_len;
-  unsigned char buf[1024];
+  unsigned char buf[MAX_PACKET_SIZE];
   socklen_t addrlen = sizeof(serv_addr);
 
+
+  char* buffer = "hello.";
+  vector<int> test(3);
+  test[0] = 1;
+
+  Packet p(1, 0, test, buffer);
+  for (int i = 0; i <= 16; i++) {
+    cout << i << ": " << (int)p.m_raw[i] << endl;
+  }
+
+  Packet q(p.m_raw);
+  for (int i = 0; i <= 16; i++) {
+    cout << i << ": " << (int)q.m_raw[i] << endl;
+  }
+
   while(1) {
-    recv_len = recvfrom(serv_fd, buf, 1024, 0,
+    recv_len = recvfrom(serv_fd, buf, MAX_PACKET_SIZE, 0,
       (struct sockaddr *) &cli_addr, &addrlen);
 
     if (recv_len < 0) {
