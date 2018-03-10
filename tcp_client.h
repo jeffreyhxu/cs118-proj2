@@ -1,9 +1,13 @@
 #ifndef TCP_CLIENT_H
 #define TCP_CLIENT_H
 
+#include <string>
+
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
+
+using namespace std;
 
 class Packet;
 
@@ -21,6 +25,7 @@ private:
   void createSocket();
   void sendPacket(Packet p);
   void receivePacket(Packet& p);
+  void displayMessage(string dest, Packet p, int wnd = 5120, bool retransmit = false);
 
   char* hostname;
   unsigned short portnum;

@@ -61,7 +61,7 @@ void TCP_client::sendMessage() {
 }
 
 void TCP_client::handshake() {
-  cout << "PREPARING HANDSHAKE" << endl;
+  cout << "PREPARING HANDSHAKE" << endl << endl;
 
   vector<int> flags(3);
   flags[1] = 1;                           //SYN
@@ -89,10 +89,11 @@ void TCP_client::handshake() {
   send = Packet(0, 0, 0, flags, buf);
   sendPacket(send);
 
-  cout << "HANDSHAKE SUCCESSFUL" << endl;
+  cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
 }
 
 void TCP_client::sendPacket(Packet p) {
+  displayMessage("sending", p);
   sendto(serv_fd, p.m_raw, 1024, 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 }
 
@@ -110,5 +111,22 @@ void TCP_client::receivePacket(Packet& p) {
   }
 
   p = Packet(buf);
-  cout << p.m_message << endl;
+  displayMessage("receiving", p);
+}
+
+void TCP_client::displayMessage(string dest, Packet p, int wnd, bool retransmit) {
+  if (dest == "sending") {
+    cout << "Sending packet " << p.m_ack << " " << wnd << " ";
+
+    if (retransmit) cout << "Retransmission" << " ";
+    if (p.m_flags[1]) cout << "SYN" << " ";
+    if (p.m_flags[2]) cout << "FIN" << " ";
+    cout << endl;
+  }
+  else if (dest == "receiving") {
+    cout << "Receiving packet " << p.m_seq << endl;
+  }
+  else {
+    cerr << "Invalid dest in displayMessage" << endl;
+  }
 }

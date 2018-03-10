@@ -3,9 +3,10 @@
 
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <vector>
+#include <cctype>
 
-#include <string.h>
 #include <stdio.h>
 #include <errno.h>
 
@@ -79,7 +80,7 @@ void TCP_server::startServer() {
 }
 
 void TCP_server::handshake() {
-  cout << "AWAITING HANDSHAKE" << endl;
+  cout << "AWAITING HANDSHAKE" << endl << endl;
 
   while(1) {
     Packet rec;
@@ -95,8 +96,7 @@ void TCP_server::handshake() {
     Packet send(0, 0, 0, flags, buf);
 
     sendPacket(send);
-    cout << "SENT SYNACK" << endl;
-
+    
     while(1) {
       // TODO: REQUIRES TIMEOUT IMPLEMENTATION
       receivePacket(rec);
@@ -109,14 +109,14 @@ void TCP_server::handshake() {
       break;
     }
 
-
     break;
   }
 
-  cout << "HANDSHAKE SUCCESSFUL" << endl;
+  cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
 }
 
 void TCP_server::sendPacket(Packet p) {
+  displayMessage("sending", p);
   sendto(serv_fd, p.m_raw, 1024, 0, (struct sockaddr *)&cli_addr, sizeof(cli_addr));
 }
 
@@ -134,5 +134,22 @@ void TCP_server::receivePacket(Packet& p) {
   }
 
   p = Packet(buf);
-  cout << p.m_message << endl;
+  displayMessage("receiving", p);
+}
+
+void TCP_server::displayMessage(string dest, Packet p, int wnd, bool retransmit) {
+  if (dest == "sending") {
+    cout << "Sending packet " << p.m_seq << " " << wnd << " ";
+
+    if (retransmit) cout << "Retransmission" << " ";
+    if (p.m_flags[1]) cout << "SYN" << " ";
+    if (p.m_flags[2]) cout << "FIN" << " ";
+    cout << endl;
+  }
+  else if (dest == "receiving") {
+    cout << "Receiving packet " << p.m_ack << endl;
+  }
+  else {
+    cerr << "Invalid dest in displayMessage" << endl;
+  }
 }
