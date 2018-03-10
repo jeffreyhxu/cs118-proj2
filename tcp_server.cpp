@@ -56,6 +56,7 @@ void TCP_server::createSocket() {
 
 void TCP_server::startServer() {
   cout << "Server started..." << endl;
+  handshake();
 
   int recv_len;
   socklen_t addrlen = sizeof(serv_addr);
@@ -78,5 +79,60 @@ void TCP_server::startServer() {
 }
 
 void TCP_server::handshake() {
-  
+  cout << "AWAITING HANDSHAKE" << endl;
+
+  while(1) {
+    Packet rec;
+    receivePacket(rec);
+
+    if (rec.m_flags[1] != 1) continue;
+
+    vector<int> flags(3);
+    flags[0] = 1;                           // ACK
+    flags[1] = 1;                           // SYN
+    char buf[1024] = "SYNACK";
+
+    Packet send(0, 0, 0, flags, buf);
+
+    sendPacket(send);
+    cout << "SENT SYNACK" << endl;
+
+    while(1) {
+      // TODO: REQUIRES TIMEOUT IMPLEMENTATION
+      receivePacket(rec);
+
+      if (rec.m_flags[0] != 1) {
+        cout << "INVALID RESPONSE TO SYNACK" << endl;
+        continue;
+      }
+
+      break;
+    }
+
+
+    break;
+  }
+
+  cout << "HANDSHAKE SUCCESSFUL" << endl;
+}
+
+void TCP_server::sendPacket(Packet p) {
+  sendto(serv_fd, p.m_raw, 1024, 0, (struct sockaddr *)&cli_addr, sizeof(cli_addr));
+}
+
+void TCP_server::receivePacket(Packet& p) {
+  int recv_len;
+  socklen_t addrlen = sizeof(cli_addr);
+  char buf[1024];
+
+  recv_len = recvfrom(serv_fd, buf, MAX_PACKET_SIZE, 0,
+    (struct sockaddr *) &cli_addr, &addrlen);
+
+  if (recv_len < 0) {
+    cerr << "Invalid Message Received" << endl;
+    return;
+  }
+
+  p = Packet(buf);
+  cout << p.m_message << endl;
 }

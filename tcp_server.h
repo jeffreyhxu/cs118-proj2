@@ -5,6 +5,8 @@
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
 
+class Packet;
+
 class TCP_server {
 public:
   TCP_server();
@@ -17,6 +19,8 @@ public:
 
 private:
   void createSocket();
+  void sendPacket(Packet p);
+  void receivePacket(Packet& p);
 
   unsigned short portnum;
 

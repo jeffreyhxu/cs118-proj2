@@ -18,7 +18,6 @@ public:
   ~TCP_client();
 
 private:
-  void createOwnSocket();
   void createSocket();
   void sendPacket(Packet p);
   void receivePacket(Packet& p);
