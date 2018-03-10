@@ -11,6 +11,7 @@ public:
   TCP_server(unsigned short p);
 
   void startServer();
+  void handshake();
 
   ~TCP_server();
 

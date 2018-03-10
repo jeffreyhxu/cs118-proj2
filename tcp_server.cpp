@@ -58,18 +58,8 @@ void TCP_server::startServer() {
   cout << "Server started..." << endl;
 
   int recv_len;
-  unsigned char buf[MAX_PACKET_SIZE];
   socklen_t addrlen = sizeof(serv_addr);
-
-
-  char* buffer = "hello.";
-  vector<int> test(3);
-  test[0] = 1;
-
-  Packet p(1, 0, test, buffer);
-
-  Packet q(p.m_raw);
-
+  char buf[1024];
 
   while(1) {
     recv_len = recvfrom(serv_fd, buf, MAX_PACKET_SIZE, 0,
@@ -80,8 +70,13 @@ void TCP_server::startServer() {
       return;
     }
 
-    cout << buf << endl;
+    Packet p(buf);
+    cout << p.m_message << endl;
 
     close(cli_fd);
   }
+}
+
+void TCP_server::handshake() {
+  
 }

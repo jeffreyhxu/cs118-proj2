@@ -1,5 +1,5 @@
-#ifndef TCP_CLIENT_H
-#define TCP_CLIENT_H
+#ifndef PACKET_H
+#define PACKET_H
 
 #include <vector>
 
@@ -8,13 +8,16 @@ using namespace std;
 class Packet {
 public:
   // USED TO GENERATE PACKET
-  Packet(int ack, int seq, vector<int> flags, char* message);
+  Packet();
+  Packet(int ack, int seq, vector<int> flags, char* message);             // used for acks and syns and stuff
+  Packet(int ack, int seq, int len, vector<int> flags, char* message);    // used for data packets
 
   // USED TO GO FROM PACKET TO HUMAN-READABLE
   Packet(char raw[]);
 
   int m_ack;
   int m_seq;
+  int m_len;
   vector<int> m_flags;      // {ACK, SEQ, FIN}
   char* m_message;
 
@@ -23,7 +26,8 @@ public:
 
   /******************************************************
     BITS 0-15 : ACK Number
-    BITS 16-32: SEQ Number
+    BITS 16-31: SEQ Number
+    BITS 32-48: MESSAGE LENGTH
     BIT  61   : ACK Flag
     BIT  62   : SYN Flag
     BIT  63   : FIN Flag
