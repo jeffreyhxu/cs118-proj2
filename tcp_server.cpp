@@ -67,14 +67,9 @@ void TCP_server::startServer() {
   test[0] = 1;
 
   Packet p(1, 0, test, buffer);
-  for (int i = 0; i <= 16; i++) {
-    cout << i << ": " << (int)p.m_raw[i] << endl;
-  }
 
   Packet q(p.m_raw);
-  for (int i = 0; i <= 16; i++) {
-    cout << i << ": " << (int)q.m_raw[i] << endl;
-  }
+
 
   while(1) {
     recv_len = recvfrom(serv_fd, buf, MAX_PACKET_SIZE, 0,

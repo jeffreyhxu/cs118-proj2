@@ -1,9 +1,14 @@
 #include "packet.h"
 
+#include <iostream>
 #include <cstring>
 #include <stdio.h>
 
 using namespace std;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
 
 Packet::Packet(int ack, int seq, vector<int> flags, char* message) {
   m_ack = ack;
@@ -17,20 +22,23 @@ Packet::Packet(int ack, int seq, vector<int> flags, char* message) {
   m_header[3] = (seq & 0x0F);
   m_header[7] = flags[0] + 2*flags[1] + 4*flags[2];
 
-  strcpy(m_raw, m_header);
-  strcpy(m_raw + 8, m_message);
+  memcpy(m_raw, m_header, 8);
+  memcpy(m_raw + 8, m_message, 120);
 }
 
 Packet::Packet(char raw[]) {
-  strcpy(m_raw, raw);
+  memcpy(m_raw, raw, 128);
 
-  strcpy(m_header, m_raw);
-  strcpy(m_message, m_raw+4);
+  memcpy(m_header, m_raw, 8);
+
+  m_message = (char*)malloc(120);
+  memcpy(m_message, m_raw+8, 120);
 
   m_ack = m_header[0];
   m_seq = m_header[1];
 
-  m_flags[0] = (m_header[3] & 0x01);
-  m_flags[1] = (m_header[3] & 0x02) >> 1;
-  m_flags[2] = (m_header[3] & 0x04) >> 2;
+  m_flags.resize(8);
+  m_flags[0] = (m_header[7] & 0x01);
+  m_flags[1] = (m_header[7] & 0x02) >> 1;
+  m_flags[2] = (m_header[7] & 0x04) >> 2;
 }
