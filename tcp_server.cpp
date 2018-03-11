@@ -7,10 +7,13 @@
 #include <cstring>
 #include <vector>
 #include <cctype>
+#include <climits>
+#include <algorithm>
 
 #include <stdio.h>
 #include <errno.h>
 
+#include <sys/stat.h>
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
@@ -18,7 +21,7 @@
 #include <unistd.h>
 
 #define MAX_PACKET_SIZE 1024        // SPEC
-#define MAX_MSG_SIZE 960            // 1024 - 64 FOR TCP HEADER
+#define MAX_MSG_SIZE 1008            // 1024 - 16 FOR TCP HEADER
 
 using namespace std;
 
@@ -61,11 +64,34 @@ void TCP_server::startServer() {
   while(1) {
     handshake();
 
+    /********** TO BE MOVED TO ANOTHER FUNCTION THAT WILL DEAL WITH LARGE FILES *******/
+    ifstream reader;
+    reader.open(filepath.c_str(), ios::in | ios::binary);
 
+    if (!reader) {
+      cout << "INVALID FILEPATH" << endl;
+      // TODO: 404 NOT FOUND MESSAGE?
+    }
 
+    reader.ignore(INT_MAX);
+    int len = min(MAX_MSG_SIZE, (int)reader.gcount());
+    reader.clear();
+    reader.seekg(ios_base::beg);
+    char *buf = new char[len];
+    reader.read(buf, len);
+
+    vector<int> flags(3);
+
+    Packet send(0, current_seq, len, flags, buf);
+    sendPacket(send);
+
+    Packet rec;
+    receivePacket(rec);
+
+    current_seq += len;
   }
 
-  // TODO: OPEN FILE, DIVIDE INTO SUBPACKETS, AND SEND EACH PACKET
+  // TODO: DIVIDE INTO SUBPACKETS, AND SEND EACH PACKET
   // TODO: IMPLEMENT SELECTIVE REPEAT
 }
 
@@ -100,6 +126,7 @@ void TCP_server::handshake() {
       break;
     }
 
+    current_seq = rec.m_ack;
     break;
   }
 

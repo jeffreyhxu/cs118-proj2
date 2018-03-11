@@ -30,8 +30,8 @@ private:
 
   unsigned short portnum;
   string filepath;
+  int current_seq;
   
-
   int serv_fd;
   struct sockaddr_in serv_addr;
 
