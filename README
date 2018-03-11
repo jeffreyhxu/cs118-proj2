@@ -1,1 +1,5 @@
-test
+./server 8000
+./client 127.0.0.1 8000 test.txt
+
+We still need to seperate a large file into a large number of packets, and do the sliding window stuff. 
+The framework, for the most part, should be done however.
