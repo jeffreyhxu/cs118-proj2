@@ -19,7 +19,6 @@ int main (int argc, char* argv[]) {
 
   //cerr << hostname << endl << portnum << endl << filename << endl;
 
-  TCP_client client = TCP_client(hostname, portnum);
+  TCP_client client = TCP_client(hostname, portnum, filename);
   client.sendMessage();
-
 }

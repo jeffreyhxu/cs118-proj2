@@ -20,9 +20,10 @@ TCP_client::TCP_client() {
 
 }
 
-TCP_client::TCP_client(char* h, unsigned short p) {
+TCP_client::TCP_client(char* h, unsigned short p, char* fp) {
   hostname = h;
   portnum = p;
+  filepath = fp;
 
   createSocket();
 }
@@ -49,15 +50,7 @@ void TCP_client::createSocket() {
 void TCP_client::sendMessage() {
   handshake();
 
-  char buf[1024];
-  strcpy(buf, "TESTING SENT MESSAGE\0");
-
-  vector<int> test(3);
-  test[0] = 1;
-
-  Packet p(0, 0, 0, test, buf);
-  //sendto(serv_fd, buf, (strlen(buf) + 1), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-
+  // TODO: ACK DATA PACKETS, CONSOLIDATE DATA
 }
 
 void TCP_client::handshake() {
@@ -84,9 +77,9 @@ void TCP_client::handshake() {
 
   flags[1] = 0;
   flags[0] = 1;
-  strcpy(buf, "ACK");
+  strcpy(buf, filepath);
 
-  send = Packet(0, 0, 0, flags, buf);
+  send = Packet(0, 0, strlen(filepath), flags, buf);
   sendPacket(send);
 
   cout << endl << "HANDSHAKE SUCCESSFUL" << endl;

@@ -59,24 +59,8 @@ void TCP_server::startServer() {
   cout << "Server started..." << endl;
   handshake();
 
-  int recv_len;
-  socklen_t addrlen = sizeof(serv_addr);
-  char buf[1024];
-
-  while(1) {
-    recv_len = recvfrom(serv_fd, buf, MAX_PACKET_SIZE, 0,
-      (struct sockaddr *) &cli_addr, &addrlen);
-
-    if (recv_len < 0) {
-      cerr << "Invalid Message Received" << endl;
-      return;
-    }
-
-    Packet p(buf);
-    cout << p.m_message << endl;
-
-    close(cli_fd);
-  }
+  // TODO: OPEN FILE, DIVIDE INTO SUBPACKETS, AND SEND EACH PACKET
+  // TODO: IMPLEMENT SELECTIVE REPEAT
 }
 
 void TCP_server::handshake() {
@@ -96,7 +80,7 @@ void TCP_server::handshake() {
     Packet send(0, 0, 0, flags, buf);
 
     sendPacket(send);
-    
+
     while(1) {
       // TODO: REQUIRES TIMEOUT IMPLEMENTATION
       receivePacket(rec);
@@ -106,6 +90,7 @@ void TCP_server::handshake() {
         continue;
       }
 
+      filepath = rec.m_message;
       break;
     }
 

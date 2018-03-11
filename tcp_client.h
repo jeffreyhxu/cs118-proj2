@@ -14,7 +14,7 @@ class Packet;
 class TCP_client {
 public:
   TCP_client();
-  TCP_client(char* h, unsigned short p);
+  TCP_client(char* h, unsigned short p, char* fp);
 
   void sendMessage();
   void handshake();
@@ -29,6 +29,7 @@ private:
 
   char* hostname;
   unsigned short portnum;
+  char* filepath;
 
   int serv_fd;
   struct sockaddr_in serv_addr;

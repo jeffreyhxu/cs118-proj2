@@ -28,6 +28,7 @@ private:
   void displayMessage(string dest, Packet p, int wnd = 5120, bool retransmit = false);
 
   unsigned short portnum;
+  string filepath;
 
   int serv_fd;
   struct sockaddr_in serv_addr;
