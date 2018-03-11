@@ -2,6 +2,7 @@
 #include "packet.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <cstring>
 #include <vector>
@@ -57,7 +58,12 @@ void TCP_server::createSocket() {
 
 void TCP_server::startServer() {
   cout << "Server started..." << endl;
-  handshake();
+  while(1) {
+    handshake();
+
+
+
+  }
 
   // TODO: OPEN FILE, DIVIDE INTO SUBPACKETS, AND SEND EACH PACKET
   // TODO: IMPLEMENT SELECTIVE REPEAT
@@ -77,7 +83,7 @@ void TCP_server::handshake() {
     flags[1] = 1;                           // SYN
     char buf[1024] = "SYNACK";
 
-    Packet send(0, 0, 0, flags, buf);
+    Packet send(0, 5095, 0, flags, buf);
 
     sendPacket(send);
 
@@ -85,7 +91,7 @@ void TCP_server::handshake() {
       // TODO: REQUIRES TIMEOUT IMPLEMENTATION
       receivePacket(rec);
 
-      if (rec.m_flags[0] != 1) {
+      if (rec.m_flags[0] != 1 || rec.m_ack != 5096) {
         cout << "INVALID RESPONSE TO SYNACK" << endl;
         continue;
       }

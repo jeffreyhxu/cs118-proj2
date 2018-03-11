@@ -61,10 +61,11 @@ void TCP_client::handshake() {
   char buf[1024] = "SYN";
 
   Packet send(0, 0, 0, flags, buf);
+  Packet rec;
+
   while(1) {
     sendPacket(send);
 
-    Packet rec;
     receivePacket(rec);
 
     if (rec.m_flags[0] != 1 || rec.m_flags[1] != 1) {
@@ -79,7 +80,8 @@ void TCP_client::handshake() {
   flags[0] = 1;
   strcpy(buf, filepath);
 
-  send = Packet(0, 0, strlen(filepath), flags, buf);
+  send = Packet(rec.m_seq + 1, 0, strlen(filepath), flags, buf);
+  cout << send.m_ack;
   sendPacket(send);
 
   cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
@@ -109,6 +111,11 @@ void TCP_client::receivePacket(Packet& p) {
 
 void TCP_client::displayMessage(string dest, Packet p, int wnd, bool retransmit) {
   if (dest == "sending") {
+    if (p.m_ack == 0 && p.m_flags[1]) {
+      cout << "Sending packet SYN" << endl;
+      return;
+    }
+
     cout << "Sending packet " << p.m_ack << " " << wnd << " ";
 
     if (retransmit) cout << "Retransmission" << " ";
