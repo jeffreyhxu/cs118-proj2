@@ -30,16 +30,16 @@ Packet::Packet(int ack, int seq, int len, vector<int> flags, char* message) {
   m_header[7] = flags[0] + 2*flags[1] + 4*flags[2];
 
   memcpy(m_raw, m_header, 8);
-  memcpy(m_raw + 8, m_message, 120);
+  memcpy(m_raw + 8, m_message, 1016);
 }
 
 Packet::Packet(char raw[]) {
-  memcpy(m_raw, raw, 128);
+  memcpy(m_raw, raw, 1024);
 
   memcpy(m_header, m_raw, 8);
 
-  m_message = (char*)malloc(120);
-  memcpy(m_message, m_raw+8, 120);
+  m_message = (char*)malloc(1016);
+  memcpy(m_message, m_raw+8, 1016);
 
   m_ack = 0 | m_header[0];
   m_ack = (m_ack << 8) + ((unsigned char)m_header[1]);

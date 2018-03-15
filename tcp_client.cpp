@@ -12,7 +12,7 @@
 #include <errno.h>
 
 #define MAX_PACKET_SIZE 1024
-#define MAX_MSG_SIZE 1008
+#define MAX_MSG_SIZE 1016
 #define CLI_PORT 9000   // the port that the client socket resides in
 
 using namespace std;
@@ -57,7 +57,7 @@ void TCP_client::sendMessage() {
 
   vector<int> flags(3);
   flags[0] = 1;
-  char buf[MAX_MSG_SIZE] = "";
+  char buf[MAX_MSG_SIZE] = "ACK";
 
   Packet ack(rec.m_seq, 0, 0, flags, buf);
   sendPacket(ack);
@@ -70,7 +70,7 @@ void TCP_client::handshake() {
 
   vector<int> flags(3);
   flags[1] = 1;                           //SYN
-  char buf[1024] = "SYN";
+  char buf[MAX_MSG_SIZE] = "SYN";
 
   Packet send(0, 0, 0, flags, buf);
   Packet rec;

@@ -22,7 +22,7 @@ public:
   char* m_message;
 
   char m_header[8];
-  char m_raw[128];
+  char m_raw[1024];
 
   /******************************************************
     BITS 0-15 : ACK Number
@@ -32,7 +32,7 @@ public:
     BIT  62   : SYN Flag
     BIT  63   : FIN Flag
 
-    BITS 64-1024: MESSAGE
+    BITS 64-8191: MESSAGE
   *******************************************************/
 };
 

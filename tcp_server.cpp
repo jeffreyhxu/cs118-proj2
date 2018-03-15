@@ -21,7 +21,8 @@
 #include <unistd.h>
 
 #define MAX_PACKET_SIZE 1024        // SPEC
-#define MAX_MSG_SIZE 1008            // 1024 - 16 FOR TCP HEADER
+#define MAX_MSG_SIZE 1016            // 1024 - 8 FOR TCP HEADER
+#define INITIAL_SEQ_NUM 5095
 
 using namespace std;
 
@@ -80,9 +81,9 @@ void TCP_server::handshake() {
     vector<int> flags(3);
     flags[0] = 1;                           // ACK
     flags[1] = 1;                           // SYN
-    char buf[1024] = "SYNACK";
+    char buf[MAX_MSG_SIZE] = "SYNACK";
 
-    Packet send(0, 5095, 0, flags, buf);
+    Packet send(0, INITIAL_SEQ_NUM, 0, flags, buf);
 
     sendPacket(send);
 
@@ -90,9 +91,9 @@ void TCP_server::handshake() {
       // TODO: REQUIRES TIMEOUT IMPLEMENTATION
       receivePacket(rec);
 
-      if (rec.m_flags[0] != 1 || rec.m_ack != 5096) {
-        cout << "INVALID RESPONSE TO SYNACK" << endl;
-        continue;
+      if (rec.m_flags[0] != 1 || rec.m_ack != INITIAL_SEQ_NUM) { // The current implementation of ACK in tcp_client uses the seq num as
+        cout << "INVALID RESPONSE TO SYNACK" << endl;            // the ack num instead of its successor, which makes sense if we're not
+        continue;                                                // doing the TCP-style blend of GBN and SR.
       }
 
       filepath = rec.m_message;
@@ -135,7 +136,7 @@ void TCP_server::readFile() {
 	// FIN
 	vector<int> finflags(3);
 	finflags[2] = 1;
-	char finbuf[1024] = "FIN";
+	char finbuf[MAX_MSG_SIZE] = "FIN";
 	Packet fin(0, current_seq, 0, finflags, finbuf);
 	sendPacket(fin);
 	// TODO: TIMED WAIT FOR FINACK (MAYBE CLIENT SIDE?)
@@ -143,13 +144,13 @@ void TCP_server::readFile() {
 
 void TCP_server::sendPacket(Packet p) {
   displayMessage("sending", p);
-  sendto(serv_fd, p.m_raw, 1024, 0, (struct sockaddr *)&cli_addr, sizeof(cli_addr));
+  sendto(serv_fd, p.m_raw, MAX_PACKET_SIZE, 0, (struct sockaddr *)&cli_addr, sizeof(cli_addr));
 }
 
 void TCP_server::receivePacket(Packet& p) {
   int recv_len;
   socklen_t addrlen = sizeof(cli_addr);
-  char buf[1024];
+  char buf[MAX_PACKET_SIZE];
 
   recv_len = recvfrom(serv_fd, buf, MAX_PACKET_SIZE, 0,
     (struct sockaddr *) &cli_addr, &addrlen);
