@@ -38,8 +38,8 @@ Packet::Packet(char raw[]) {
 
   memcpy(m_header, m_raw, 8);
 
-  m_message = (char*)malloc(1016);
-  memcpy(m_message, m_raw+8, 1016);
+  m_message = (char*)malloc(1016);  // This does not get deallocated by a destructor because we need to hold onto it after the Packet
+  memcpy(m_message, m_raw+8, 1016); // is freed to buffer messages. This means we have to keep track of it and free it elsewhere.
 
   m_ack = 0 | m_header[0];
   m_ack = (m_ack << 8) + ((unsigned char)m_header[1]);

@@ -75,6 +75,7 @@ void TCP_server::handshake() {
   while(1) {
     Packet rec;
     receivePacket(rec);
+	free(rec.m_message)
 
     if (rec.m_flags[1] != 1) continue;
 
@@ -97,6 +98,7 @@ void TCP_server::handshake() {
       }
 
       filepath = rec.m_message;
+	  free(rec.m_message);
       break;
     }
 
@@ -128,10 +130,12 @@ void TCP_server::readFile() {
 		vector<int> flags(3);
 		Packet send(0, current_seq, MAX_MSG_SIZE, flags, buf);
 		sendPacket(send);
+
 		Packet rec;
 		receivePacket(rec);
+		free(rec.m_message);
 		current_seq += len;
-		// TODO: IMPLEMENT SELECTIVE REPEAT
+		// TODO: IMPLEMENT SELECTIVE REPEAT (MAY NEED POLLING)
 	}
 	// FIN
 	vector<int> finflags(3);

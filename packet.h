@@ -18,7 +18,7 @@ public:
   int m_ack;
   int m_seq;
   int m_len;
-  vector<int> m_flags;      // {ACK, SEQ, FIN}
+  vector<int> m_flags;      // {ACK, SYN, FIN}
   char* m_message;
 
   char m_header[8];

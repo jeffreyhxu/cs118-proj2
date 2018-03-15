@@ -26,6 +26,7 @@ private:
   void sendPacket(Packet p);
   void receivePacket(Packet& p);
   void displayMessage(string dest, Packet p, int wnd = 5120, bool retransmit = false);
+  void consolidate(const map<int, char *>& buf, int lastlen);
 
   char* hostname;
   unsigned short portnum;
@@ -34,8 +35,8 @@ private:
   int serv_fd;
   struct sockaddr_in serv_addr;
 
-  int cli_fd;
-  struct sockaddr_in cli_addr;
+  int cli_fd; // unused because we're sending and receiving on same socket
+  struct sockaddr_in cli_addr; // unused because the server will discover our address from recvfrom
 
 };
 
