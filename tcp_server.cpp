@@ -144,6 +144,7 @@ void TCP_server::readFile() {
 	Packet fin(0, current_seq, 0, finflags, finbuf);
 	sendPacket(fin);
 	// TODO: TIMED WAIT FOR FINACK (MAYBE CLIENT SIDE?)
+	reader.close();
 }
 
 void TCP_server::sendPacket(Packet p) {

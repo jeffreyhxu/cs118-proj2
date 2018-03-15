@@ -2,6 +2,7 @@
 #include "packet.h"
 
 #include <iostream>
+#include <fstream>
 #include <cstring>
 #include <vector>
 #include <map>
@@ -86,7 +87,7 @@ void TCP_client::sendMessage() {
 	close(serv_fd);
 
 	// TODO: CONSOLIDATE DATA
-	consolidate(recbuf, lastlen);
+	consolidate(recbuf, lastlen, lastseq);
 
 	for (map<int, char *>::iterator it = recbuf.begin(); it != recbuf.end(); ++it) {
 		free((*it).second);
@@ -171,6 +172,13 @@ void TCP_client::displayMessage(string dest, Packet p, int wnd, bool retransmit)
   }
 }
 
-void TCP_client::consolidate(const map<int, char *>& buf, int lastlen) {
+void TCP_client::consolidate(const map<int, char *>& buf, int lastlen, int lastseq) {
 	// TODO: write the contents of the buffers in buf into received.data
+	ofstream writer("received.data", ios::out | ios::binary);
+
+	for (map<int, char *>::const_iterator it = buf.begin(); it != buf.end(); ++it) {
+		writer.write((*it).second, (*it).first == lastseq ? lastlen : MAX_MSG_SIZE);
+	}
+
+	writer.close();
 }

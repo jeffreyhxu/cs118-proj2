@@ -26,7 +26,7 @@ private:
   void sendPacket(Packet p);
   void receivePacket(Packet& p);
   void displayMessage(string dest, Packet p, int wnd = 5120, bool retransmit = false);
-  void consolidate(const map<int, char *>& buf, int lastlen);
+  void consolidate(const map<int, char *>& buf, int lastlen, int lastseq);
 
   char* hostname;
   unsigned short portnum;
