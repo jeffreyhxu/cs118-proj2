@@ -64,35 +64,8 @@ void TCP_server::startServer() {
   while(1) {
     handshake();
 
-    /********** TO BE MOVED TO ANOTHER FUNCTION THAT WILL DEAL WITH LARGE FILES *******/
-    ifstream reader;
-    reader.open(filepath.c_str(), ios::in | ios::binary);
-
-    if (!reader) {
-      cout << "INVALID FILEPATH" << endl;
-      // TODO: 404 NOT FOUND MESSAGE?
-    }
-
-    reader.ignore(INT_MAX);
-    int len = min(MAX_MSG_SIZE, (int)reader.gcount());
-    reader.clear();
-    reader.seekg(ios_base::beg);
-    char *buf = new char[len];
-    reader.read(buf, len);
-
-    vector<int> flags(3);
-
-    Packet send(0, current_seq, len, flags, buf);
-    sendPacket(send);
-
-    Packet rec;
-    receivePacket(rec);
-
-    current_seq += len;
+	readFile();
   }
-
-  // TODO: DIVIDE INTO SUBPACKETS, AND SEND EACH PACKET
-  // TODO: IMPLEMENT SELECTIVE REPEAT
 }
 
 void TCP_server::handshake() {
@@ -131,6 +104,41 @@ void TCP_server::handshake() {
   }
 
   cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
+}
+
+void TCP_server::readFile() {
+	ifstream reader;
+	reader.open(filepath.c_str(), ios::in | ios::binary);
+
+	if (!reader) {
+		cout << "INVALID FILEPATH" << endl;
+		// TODO: 404 NOT FOUND MESSAGE?
+	}
+
+	char *buf = new char[MAX_MSG_SIZE];
+	bool going = true;
+	while (going) {
+		reader.read(buf, MAX_MSG_SIZE);
+		int len = MAX_MSG_SIZE;
+		if (!reader) {
+			len = (int)reader.gcount();
+			going = false;
+		}
+		vector<int> flags(3);
+		Packet send(0, current_seq, MAX_MSG_SIZE, flags, buf);
+		sendPacket(send);
+		Packet rec;
+		receivePacket(rec);
+		current_seq += len;
+		// TODO: IMPLEMENT SELECTIVE REPEAT
+	}
+	// FIN
+	vector<int> finflags(3);
+	finflags[2] = 1;
+	char finbuf[1024] = "FIN";
+	Packet fin(0, current_seq, 0, finflags, finbuf);
+	sendPacket(fin);
+	// TODO: TIMED WAIT FOR FINACK (MAYBE CLIENT SIDE?)
 }
 
 void TCP_server::sendPacket(Packet p) {
