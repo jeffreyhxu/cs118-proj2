@@ -9,7 +9,7 @@ class Packet {
 public:
   // USED TO GENERATE PACKET
   Packet();
-  Packet(int ack, int seq, vector<int> flags, char* message);             // used for acks and syns and stuff
+  Packet(int ack, int seq, vector<int> flags, char* message);             // used for acks and syns and stuff (unused)
   Packet(int ack, int seq, int len, vector<int> flags, char* message);    // used for data packets
 
   // USED TO GO FROM PACKET TO HUMAN-READABLE

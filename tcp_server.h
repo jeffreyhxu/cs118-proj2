@@ -27,16 +27,16 @@ public:
 private:
   void createSocket();
   void readFile();
-  void sendPacket(Packet p);
+  void sendPacket(Packet p, int wnd = 5120, bool retransmit = false);
   void receivePacket(Packet& p);
   void displayMessage(string dest, Packet p, int wnd = 5120, bool retransmit = false);
 
   unsigned short portnum;
   string filepath;
   int current_seq;
-  queue<Packet *> unacked;
-  queue<chrono::steady_clock::time_point> sendtime;
-  int winduse;
+  queue<Packet *> unacked; // sorted by time since last (re)transmission
+  queue<chrono::steady_clock::time_point> sendtime; // time last sent or resent, should stay synced to unacked
+  int first_seq; // lowest seq num in the window
 
   int serv_fd;
   struct sockaddr_in serv_addr;
