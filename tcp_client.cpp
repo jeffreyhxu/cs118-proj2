@@ -60,6 +60,10 @@ void TCP_client::sendMessage() {
 		Packet rec;
 		receivePacket(rec);
 		if (rec.m_flags[2] == 1) { // FIN
+			if (rec.m_len != 0) {
+				cout << "404 File Not Found" << endl;
+			}
+			free(rec.m_message);
 			vector<int> finflags(3);
 			finflags[0] = 1; // ACK
 			finflags[2] = 1; // FIN
