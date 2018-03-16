@@ -10,7 +10,7 @@
 #include <climits>
 #include <algorithm>
 #include <queue>
-#include <chrono>
+#include <ctime>
 
 #include <poll.h>
 #include <stdio.h>
@@ -93,7 +93,8 @@ void TCP_server::handshake() {
     Packet send(0, INITIAL_SEQ_NUM, 0, flags, buf);
 
     sendPacket(send);
-    chrono::steady_clock::time_point syntime = chrono::steady_clock::now();
+    struct timespec syntime;
+	clock_gettime(CLOCK_MONOTONIC, &syntime);
 
     struct pollfd fds[1]; // to poll for ACKs
     fds[0].fd = serv_fd;
@@ -113,9 +114,10 @@ void TCP_server::handshake() {
         break;
       }
 
-      if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - syntime).count() >= 500) {
+
+      if (timeSince(syntime) >= 500) {
         sendPacket(send, WINDOW_SIZE, true);
-	syntime = chrono::steady_clock::now();
+        clock_gettime(CLOCK_MONOTONIC, &syntime);
       }
     }
 
@@ -143,17 +145,18 @@ void TCP_server::readFile() {
     Packet send404(0, current_seq, 4, flags404, buf404);
     sendPacket(send404);
     
-    chrono::steady_clock::time_point time404 = chrono::steady_clock::now();
+    struct timespec time404;
+    clock_gettime(CLOCK_MONOTONIC, &time404);
     while (1) {
       if (poll(fds, 1, 0) > 0) { // check to see if a FINACK has arrived but don't wait up
-	Packet rec;
-	receivePacket(rec);
-	free(rec.m_message);
-	break;
+        Packet rec;
+        receivePacket(rec);
+        free(rec.m_message);
+        break;
       }
-      if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - time404).count() >= 1000) {
-	sendPacket(send404, WINDOW_SIZE, true);
-	time404 = chrono::steady_clock::now();
+      if (timeSince(time404) >= 1000) {
+        sendPacket(send404, WINDOW_SIZE, true);
+        clock_gettime(CLOCK_MONOTONIC, &time404);
       }
     }
     reader.close();
@@ -182,7 +185,9 @@ void TCP_server::readFile() {
       sendPacket(*send);
       
       unacked.push(send);
-      sendtime.push(chrono::steady_clock::now());
+      struct timespec sent;
+	  clock_gettime(CLOCK_MONOTONIC, &sent);
+      sendtime.push(sent);
       first_seq = min(first_seq, current_seq);
       current_seq += len + 8;
       hasbuf = false;
@@ -195,17 +200,17 @@ void TCP_server::readFile() {
       
       first_seq = INT_MAX;
       for (int i = 0; i < unacked.size(); i++) { // remove the acked packet from the window and update first_seq
-	if (unacked.front()->m_seq == rec.m_ack) {
-	  delete unacked.front();
-	  unacked.pop();
-	  sendtime.pop();
-	}
-	else {
-	  first_seq = min(first_seq, unacked.front()->m_seq);
-	  unacked.push(unacked.front());
-	  unacked.pop();
-	  sendtime.push(sendtime.front());
-	}
+        if (unacked.front()->m_seq == rec.m_ack) {
+          delete unacked.front();
+          unacked.pop();
+          sendtime.pop();
+        }
+        else {
+          first_seq = min(first_seq, unacked.front()->m_seq);
+          unacked.push(unacked.front());
+          unacked.pop();
+          sendtime.push(sendtime.front());
+        }
       }
     }
 
@@ -213,17 +218,15 @@ void TCP_server::readFile() {
       continue;
     }
     
-    // age of the oldest unacked packet
-    chrono::milliseconds age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front());
-    while (age.count() >= 500) { // resend all timed-out packets
+    while (timeSince(sendtime.front()) >= 500) { // resend all timed-out packets, starting with oldest
       Packet *resend = unacked.front();
       unacked.pop();
       sendPacket(*resend, WINDOW_SIZE, true);
       unacked.push(resend);
       sendtime.pop();
-      sendtime.push(chrono::steady_clock::now());
-	
-      age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front());
+      struct timespec newsent;
+	  clock_gettime(CLOCK_MONOTONIC, &newsent);
+      sendtime.push(newsent);
     }
   }
   // FIN
@@ -232,7 +235,8 @@ void TCP_server::readFile() {
   char finbuf[MAX_MSG_SIZE] = "FIN";
   Packet fin(0, current_seq, 0, finflags, finbuf);
   sendPacket(fin);
-  chrono::steady_clock::time_point fintime = chrono::steady_clock::now();
+  struct timespec fintime;
+  clock_gettime(CLOCK_MONOTONIC, &fintime);
   while (1) {
     if (poll(fds, 1, 1) > 0) { // check to see if a FINACK has arrived but don't wait up
       Packet rec;
@@ -240,9 +244,9 @@ void TCP_server::readFile() {
       free(rec.m_message);
       break;
     }
-    if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - fintime).count() >= 1000) {
+    if (timeSince(fintime) >= 1000) {
       sendPacket(fin);
-      fintime = chrono::steady_clock::now();
+      clock_gettime(CLOCK_MONOTONIC, &fintime);
     }
   }
   reader.close();
@@ -285,4 +289,10 @@ void TCP_server::displayMessage(string dest, Packet p, int wnd, bool retransmit)
   else {
     cerr << "Invalid dest in displayMessage" << endl;
   }
+}
+
+long long TCP_server::timeSince(struct timespec then) {
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return ((now.tv_sec - then.tv_sec) * 1000000000 + now.tv_nsec - then.tv_nsec) / 1000000;
 }
