@@ -74,7 +74,7 @@ void TCP_client::sendMessage() {
       sendPacket(finack);
       break;
     }
-    cout << rec.m_message << endl;
+    //cout << rec.m_message << endl;
 
     recbuf[rec.m_seq] = rec.m_message;
     if (rec.m_seq > lastseq) {

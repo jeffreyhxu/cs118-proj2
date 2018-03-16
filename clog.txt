@@ -1,0 +1,31 @@
+Socket created...
+PREPARING HANDSHAKE
+
+Sending packet SYN
+Receiving packet 5095
+Sending packet 5095 
+
+HANDSHAKE SUCCESSFUL
+Receiving packet 5103
+Sending packet 5103 
+Receiving packet 6127
+Sending packet 6127 
+Receiving packet 7151
+Sending packet 7151 
+Receiving packet 8175
+Sending packet 8175 
+Receiving packet 9199
+Sending packet 9199 
+Receiving packet 10223
+Sending packet 10223 
+Receiving packet 11247
+Sending packet 11247 
+Receiving packet 12271
+Sending packet 12271 
+Receiving packet 13295
+Sending packet 13295 
+Receiving packet 14319
+Sending packet 14319 
+Receiving packet 15183
+Sending packet 15183 FIN 
+lastlen: 856

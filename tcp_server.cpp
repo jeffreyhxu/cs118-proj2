@@ -71,7 +71,7 @@ void TCP_server::startServer() {
   while(1) {
     handshake();
 
-	readFile();
+    readFile();
   }
 }
 
@@ -94,7 +94,7 @@ void TCP_server::handshake() {
 
     sendPacket(send);
     struct timespec syntime;
-	clock_gettime(CLOCK_MONOTONIC, &syntime);
+    clock_gettime(CLOCK_MONOTONIC, &syntime);
 
     struct pollfd fds[1]; // to poll for ACKs
     fds[0].fd = serv_fd;
@@ -172,21 +172,21 @@ void TCP_server::readFile() {
     if (!hasbuf) { // prepare the next block of data
       reader.read(buf, MAX_MSG_SIZE);
       if (!reader) {
-	len = (int)reader.gcount();
-	cout << "lastlen: " << len << endl;
+        len = (int)reader.gcount();
+	//cout << "lastlen: " << len << endl;
 	filedone = true;
       }
       hasbuf = true;
     }
 
-    if (current_seq + len + 8 - first_seq <= WINDOW_SIZE) { // if space in the window, send that block of data and start its timer
+    if (hasbuf && current_seq + len + 8 - first_seq <= WINDOW_SIZE) { // if space in the window, send that block of data and start its timer
       vector<int> flags(3);
       Packet *send = new Packet(0, current_seq, len, flags, buf);
       sendPacket(*send);
       
       unacked.push(send);
       struct timespec sent;
-	  clock_gettime(CLOCK_MONOTONIC, &sent);
+      clock_gettime(CLOCK_MONOTONIC, &sent);
       sendtime.push(sent);
       first_seq = min(first_seq, current_seq);
       current_seq += len + 8;
