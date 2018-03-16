@@ -7,6 +7,8 @@
 #include <vector>
 #include <map>
 
+#include <unistd.h>
+
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
@@ -176,13 +178,14 @@ void TCP_client::displayMessage(string dest, Packet p, int wnd, bool retransmit)
   }
 }
 
-void TCP_client::consolidate(const map<int, char *>& buf, int lastlen, int lastseq) {
-	// TODO: write the contents of the buffers in buf into received.data
-	ofstream writer("received.data", ios::out | ios::binary);
+void TCP_client::consolidate(map<int, char *>& buf, int lastlen, int lastseq) {
+  // TODO: write the contents of the buffers in buf into received.data
+  ofstream writer("received.data", ios::out | ios::binary);
 
-	for (map<int, char *>::const_iterator it = buf.begin(); it != buf.end(); ++it) {
-		writer.write((*it).second, (*it).first == lastseq ? lastlen : MAX_MSG_SIZE);
-	}
+  for (map<int, char *>::iterator it = buf.begin(); it != buf.end(); ++it) {
+    writer.write((*it).second, (*it).first == lastseq ? lastlen : MAX_MSG_SIZE);
+    free((*it).second);
+  }
 
-	writer.close();
+  writer.close();
 }

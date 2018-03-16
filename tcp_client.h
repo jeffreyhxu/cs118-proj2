@@ -2,6 +2,7 @@
 #define TCP_CLIENT_H
 
 #include <string>
+#include <map>
 
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
@@ -26,7 +27,7 @@ private:
   void sendPacket(Packet p);
   void receivePacket(Packet& p);
   void displayMessage(string dest, Packet p, int wnd = 5120, bool retransmit = false);
-  void consolidate(const map<int, char *>& buf, int lastlen, int lastseq);
+  void consolidate(map<int, char *>& buf, int lastlen, int lastseq);
 
   char* hostname;
   unsigned short portnum;
