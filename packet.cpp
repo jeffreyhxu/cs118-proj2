@@ -26,7 +26,7 @@ Packet::Packet(int ack, int seq, int len, vector<int> flags, char* message) {
   m_header[2] = (seq & 0xFF00) >> 8;
   m_header[3] = (seq & 0x00FF);
   m_header[4] = (len & 0xFF00) >> 8;
-  m_header[5] = (len & 0x0F);
+  m_header[5] = (len & 0x00FF);
   m_header[7] = flags[0] + 2*flags[1] + 4*flags[2];
 
   memcpy(m_raw, m_header, 8);

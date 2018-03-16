@@ -53,51 +53,50 @@ void TCP_client::createSocket() {
 }
 
 void TCP_client::sendMessage() {
-	handshake();
+  handshake();
 
-	map<int, char *> recbuf;
-	int lastseq = 0;
-	int lastlen = 0; // only need to know length of last message because all previous will be MAX_MSG_SIZE
-	while (1) {
-		Packet rec;
-		receivePacket(rec);
-		if (rec.m_flags[2] == 1) { // FIN
-			if (rec.m_len != 0) {
-				cout << "404 File Not Found" << endl;
-			}
-			free(rec.m_message);
-			vector<int> finflags(3);
-			finflags[0] = 1; // ACK
-			finflags[2] = 1; // FIN
-			char finbuf[MAX_MSG_SIZE] = "FINACK";
-			Packet finack(rec.m_seq, 0, 0, finflags, finbuf);
-			sendPacket(finack);
-			break;
-		}
-		cout << rec.m_message << endl;
+  map<int, char *> recbuf;
+  int lastseq = 0;
+  int lastlen = 0; // only need to know length of last message because all previous will be MAX_MSG_SIZE
+  while (1) {
+    Packet rec;
+    receivePacket(rec);
+    if (rec.m_flags[2] == 1) { // FIN
+      if (rec.m_len != 0) {
+	cout << "404 File Not Found" << endl;
+      }
+      free(rec.m_message);
+      vector<int> finflags(3);
+      finflags[0] = 1; // ACK
+      finflags[2] = 1; // FIN
+      char finbuf[MAX_MSG_SIZE] = "FINACK";
+      Packet finack(rec.m_seq, 0, 0, finflags, finbuf);
+      sendPacket(finack);
+      break;
+    }
+    cout << rec.m_message << endl;
 
-		recbuf[rec.m_seq] = rec.m_message;
-		if (rec.m_seq > lastseq) {
-			lastseq = rec.m_seq;
-			lastlen = rec.m_len;
-		}
+    recbuf[rec.m_seq] = rec.m_message;
+    if (rec.m_seq > lastseq) {
+      lastseq = rec.m_seq;
+      lastlen = rec.m_len;
+    }
 
-		vector<int> flags(3);
-		flags[0] = 1;
-		char buf[MAX_MSG_SIZE] = "ACK";
+    vector<int> flags(3);
+    flags[0] = 1;
+    char buf[MAX_MSG_SIZE] = "ACK";
 
-		Packet ack(rec.m_seq, 0, 0, flags, buf); // ACK num is equal to seq num rather than being the next expected byte. Next expected byte
-		sendPacket(ack);                         // lends itself more easily to GBN or the hybrid of GBN and SR used by TCP.
-	}
+    Packet ack(rec.m_seq, 0, 0, flags, buf); // ACK num is equal to seq num rather than being the next expected byte. Next expected byte
+    sendPacket(ack);                         // lends itself more easily to GBN or the hybrid of GBN and SR used by TCP.
+  }
 
-	close(serv_fd);
+  close(serv_fd);
 
-	// TODO: CONSOLIDATE DATA
-	consolidate(recbuf, lastlen, lastseq);
+  consolidate(recbuf, lastlen, lastseq);
 
-	for (map<int, char *>::iterator it = recbuf.begin(); it != recbuf.end(); ++it) {
-		free((*it).second);
-	}
+  for (map<int, char *>::iterator it = recbuf.begin(); it != recbuf.end(); ++it) {
+    free((*it).second);
+  }
 }
 
 void TCP_client::handshake() {
@@ -128,7 +127,7 @@ void TCP_client::handshake() {
   flags[0] = 1;
   strcpy(buf, filepath);
 
-  send = Packet(rec.m_seq + 1, 0, strlen(filepath), flags, buf);
+  send = Packet(rec.m_seq, 0, strlen(filepath), flags, buf);
   sendPacket(send);
 
   cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
@@ -163,7 +162,7 @@ void TCP_client::displayMessage(string dest, Packet p, int wnd, bool retransmit)
       return;
     }
 
-    cout << "Sending packet " << p.m_ack << " " << wnd << " ";
+    cout << "Sending packet " << p.m_ack << " ";
 
     if (retransmit) cout << "Retransmission" << " ";
     if (p.m_flags[1]) cout << "SYN" << " ";
@@ -184,8 +183,8 @@ void TCP_client::consolidate(map<int, char *>& buf, int lastlen, int lastseq) {
 
   for (map<int, char *>::iterator it = buf.begin(); it != buf.end(); ++it) {
     writer.write((*it).second, (*it).first == lastseq ? lastlen : MAX_MSG_SIZE);
-    free((*it).second);
   }
+  cout << "lastlen: " << lastlen << endl;
 
   writer.close();
 }

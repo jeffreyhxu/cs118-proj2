@@ -81,7 +81,7 @@ void TCP_server::handshake() {
   while(1) {
     Packet rec;
     receivePacket(rec);
-	free(rec.m_message);
+    free(rec.m_message);
 
     if (rec.m_flags[1] != 1) continue;
 
@@ -93,14 +93,14 @@ void TCP_server::handshake() {
     Packet send(0, INITIAL_SEQ_NUM, 0, flags, buf);
 
     sendPacket(send);
-	chrono::steady_clock::time_point syntime = chrono::steady_clock::now();
+    chrono::steady_clock::time_point syntime = chrono::steady_clock::now();
 
-	struct pollfd fds[1]; // to poll for ACKs
-	fds[0].fd = serv_fd;
-	fds[0].events = POLLIN;
+    struct pollfd fds[1]; // to poll for ACKs
+    fds[0].fd = serv_fd;
+    fds[0].events = POLLIN;
 
     while(1) {
-      if (poll(fds, 1, 0) > 0) { // poll for ACKs but don't wait up so we can keep checking the time
+      if (poll(fds, 1, 1) > 0) { // poll for ACKs but don't wait up so we can keep checking the time
         receivePacket(rec);
 
         if (rec.m_flags[0] != 1 || rec.m_ack != INITIAL_SEQ_NUM) { // The current implementation of ACK in tcp_client uses the seq num as
@@ -111,16 +111,16 @@ void TCP_server::handshake() {
         filepath = rec.m_message; // this isn't a pointer but a constructor for a string
         free(rec.m_message);      // so this isn't as scary as it looks
         break;
-	  }
+      }
 
-	  if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - syntime).count() >= 500) {
+      if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - syntime).count() >= 500) {
         sendPacket(send, WINDOW_SIZE, true);
-		syntime = chrono::steady_clock::now();
-	  }
+	syntime = chrono::steady_clock::now();
+      }
     }
 
     current_seq = rec.m_ack + 8; // 8 byte header
-	first_seq = INT_MAX;
+    first_seq = INT_MAX;
     break;
   }
 
@@ -128,119 +128,124 @@ void TCP_server::handshake() {
 }
 
 void TCP_server::readFile() {
-	ifstream reader;
-	reader.open(filepath.c_str(), ios::in | ios::binary);
+  ifstream reader;
+  reader.open(filepath.c_str(), ios::in | ios::binary);
 
-	struct pollfd fds[1]; // to poll for ACKs
-	fds[0].fd = serv_fd;
-	fds[0].events = POLLIN;
+  struct pollfd fds[1]; // to poll for ACKs
+  fds[0].fd = serv_fd;
+  fds[0].events = POLLIN;
+  
+  if (!reader) {
+    cout << "INVALID FILEPATH" << endl;
+    char buf404[MAX_MSG_SIZE] = "404";  // 404 will be signified by a FIN packet with non-zero length.
+    vector<int> flags404(3);
+    flags404[1] = 1;
+    Packet send404(0, current_seq, 4, flags404, buf404);
+    sendPacket(send404);
+    
+    chrono::steady_clock::time_point time404 = chrono::steady_clock::now();
+    while (1) {
+      if (poll(fds, 1, 0) > 0) { // check to see if a FINACK has arrived but don't wait up
+	Packet rec;
+	receivePacket(rec);
+	free(rec.m_message);
+	break;
+      }
+      if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - time404).count() >= 1000) {
+	sendPacket(send404, WINDOW_SIZE, true);
+	time404 = chrono::steady_clock::now();
+      }
+    }
+    reader.close();
+    return;
+  }
 
-	if (!reader) {
-		cout << "INVALID FILEPATH" << endl;
-		char buf404[MAX_MSG_SIZE] = "404";  // 404 will be signified by a FIN packet with non-zero length.
-		vector<int> flags404(3);
-		flags404[1] = 1;
-		Packet send404(0, current_seq, 4, flags404, buf404);
-		sendPacket(send404);
+  char buf[MAX_MSG_SIZE];
+  bool filedone = false;
+  bool hasbuf = false;
+  
+  while (!filedone || !unacked.empty()) {
+    int len = MAX_MSG_SIZE;
+    if (!hasbuf) { // prepare the next block of data
+      reader.read(buf, MAX_MSG_SIZE);
+      if (!reader) {
+	len = (int)reader.gcount();
+	cout << "lastlen: " << len << endl;
+	filedone = true;
+      }
+      hasbuf = true;
+    }
 
-		chrono::steady_clock::time_point time404 = chrono::steady_clock::now();
-		while (1) {
-			if (poll(fds, 1, 0) > 0) { // check to see if a FINACK has arrived but don't wait up
-				Packet rec;
-				receivePacket(rec);
-				free(rec.m_message);
-				break;
-			}
-			if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - time404).count() >= 1000) {
-				sendPacket(send404, WINDOW_SIZE, true);
-				time404 = chrono::steady_clock::now();
-			}
-		}
-		reader.close();
-		return;
+    if (current_seq + len + 8 - first_seq <= WINDOW_SIZE) { // if space in the window, send that block of data and start its timer
+      vector<int> flags(3);
+      Packet *send = new Packet(0, current_seq, len, flags, buf);
+      sendPacket(*send);
+      
+      unacked.push(send);
+      sendtime.push(chrono::steady_clock::now());
+      first_seq = min(first_seq, current_seq);
+      current_seq += len + 8;
+      hasbuf = false;
+    }
+    
+    if (poll(fds, 1, 1) > 0) { // check to see if an ACK has arrived but don't wait up
+      Packet rec;
+      receivePacket(rec);
+      free(rec.m_message);
+      
+      first_seq = INT_MAX;
+      for (int i = 0; i < unacked.size(); i++) { // remove the acked packet from the window and update first_seq
+	if (unacked.front()->m_seq == rec.m_ack) {
+	  delete unacked.front();
+	  unacked.pop();
+	  sendtime.pop();
 	}
-
-	char buf[MAX_MSG_SIZE];
-	bool filedone = false;
-	bool hasbuf = false;
-
-	while (!filedone || !unacked.empty()) {
-		int len = MAX_MSG_SIZE;
-		if (!hasbuf) { // prepare the next block of data
-			reader.read(buf, MAX_MSG_SIZE);
-			if (!reader) {
-				len = (int)reader.gcount();
-				filedone = true;
-			}
-			hasbuf = true;
-		}
-
-		if (current_seq + len + 8 - first_seq <= WINDOW_SIZE) { // if space in the window, send that block of data and start its timer
-			vector<int> flags(3);
-			Packet *send = new Packet(0, current_seq, len, flags, buf);
-			sendPacket(*send);
-
-			unacked.push(send);
-			sendtime.push(chrono::steady_clock::now());
-			first_seq = min(first_seq, current_seq);
-			current_seq += len + 8;
-			hasbuf = false;
-		}
-
-		if (poll(fds, 1, 0) > 0) { // check to see if an ACK has arrived but don't wait up
-			Packet rec;
-			receivePacket(rec);
-			free(rec.m_message);
-
-			first_seq = INT_MAX;
-			for (int i = 0; i < unacked.size(); i++) { // remove the acked packet from the window and update first_seq
-				if (unacked.front()->m_seq == rec.m_ack) {
-					delete unacked.front();
-					unacked.pop();
-					sendtime.pop();
-				}
-				else {
-					first_seq = min(first_seq, unacked.front()->m_seq);
-					unacked.push(unacked.front());
-					unacked.pop();
-					sendtime.push(sendtime.front());
-				}
-			}
-		}
-
-		// age of the oldest unacked packet
-		chrono::milliseconds age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front());
-		while (age.count() >= 500) { // resend all timed-out packets
-			Packet *resend = unacked.front();
-			unacked.pop();
-			sendPacket(*resend, WINDOW_SIZE, true);
-			unacked.push(resend);
-			sendtime.pop();
-			sendtime.push(chrono::steady_clock::now());
-
-			age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front());
-		}
+	else {
+	  first_seq = min(first_seq, unacked.front()->m_seq);
+	  unacked.push(unacked.front());
+	  unacked.pop();
+	  sendtime.push(sendtime.front());
 	}
-	// FIN
-	vector<int> finflags(3);
-	finflags[2] = 1;
-	char finbuf[MAX_MSG_SIZE] = "FIN";
-	Packet fin(0, current_seq, 0, finflags, finbuf);
-	sendPacket(fin);
-	chrono::steady_clock::time_point fintime = chrono::steady_clock::now();
-	while (1) {
-		if (poll(fds, 1, 0) > 0) { // check to see if a FINACK has arrived but don't wait up
-			Packet rec;
-			receivePacket(rec);
-			free(rec.m_message);
-			break;
-		}
-		if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - fintime).count() >= 1000) {
-			sendPacket(fin);
-			fintime = chrono::steady_clock::now();
-		}
-	}
-	reader.close();
+      }
+    }
+
+    if (unacked.empty()) {
+      continue;
+    }
+    
+    // age of the oldest unacked packet
+    chrono::milliseconds age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front());
+    while (age.count() >= 500) { // resend all timed-out packets
+      Packet *resend = unacked.front();
+      unacked.pop();
+      sendPacket(*resend, WINDOW_SIZE, true);
+      unacked.push(resend);
+      sendtime.pop();
+      sendtime.push(chrono::steady_clock::now());
+	
+      age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front());
+    }
+  }
+  // FIN
+  vector<int> finflags(3);
+  finflags[2] = 1;
+  char finbuf[MAX_MSG_SIZE] = "FIN";
+  Packet fin(0, current_seq, 0, finflags, finbuf);
+  sendPacket(fin);
+  chrono::steady_clock::time_point fintime = chrono::steady_clock::now();
+  while (1) {
+    if (poll(fds, 1, 1) > 0) { // check to see if a FINACK has arrived but don't wait up
+      Packet rec;
+      receivePacket(rec);
+      free(rec.m_message);
+      break;
+    }
+    if (chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - fintime).count() >= 1000) {
+      sendPacket(fin);
+      fintime = chrono::steady_clock::now();
+    }
+  }
+  reader.close();
 }
 
 void TCP_server::sendPacket(Packet p, int wnd, bool retransmit) {
