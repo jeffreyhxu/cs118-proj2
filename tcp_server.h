@@ -3,6 +3,8 @@
 
 #include <fstream>
 #include <string>
+#include <queue>
+#include <chrono>
 
 #include <sys/types.h>   // definitions of a number of data types used in socket.h and netinet/in.h
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
@@ -32,12 +34,15 @@ private:
   unsigned short portnum;
   string filepath;
   int current_seq;
-  
+  queue<Packet *> unacked;
+  queue<chrono::steady_clock::time_point> sendtime;
+  int winduse;
+
   int serv_fd;
   struct sockaddr_in serv_addr;
 
-  int cli_fd;
-  struct sockaddr_in cli_addr;
+  int cli_fd; // unused, remove
+  struct sockaddr_in cli_addr; // unused, remove
 
 };
 

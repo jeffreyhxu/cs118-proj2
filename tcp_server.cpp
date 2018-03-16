@@ -9,6 +9,8 @@
 #include <cctype>
 #include <climits>
 #include <algorithm>
+#include <queue>
+#include <chrono>
 
 #include <stdio.h>
 #include <errno.h>
@@ -23,6 +25,7 @@
 #define MAX_PACKET_SIZE 1024        // SPEC
 #define MAX_MSG_SIZE 1016            // 1024 - 8 FOR TCP HEADER
 #define INITIAL_SEQ_NUM 5095
+#define WINDOW_SIZE 5120
 
 using namespace std;
 
@@ -38,7 +41,9 @@ TCP_server::TCP_server(unsigned short p) {
 }
 
 TCP_server::~TCP_server() {
-  close(serv_fd);
+  if (serv_fd > 0) {
+	  close(serv_fd);
+  }
 }
 
 void TCP_server::createSocket() {
@@ -118,20 +123,37 @@ void TCP_server::readFile() {
 		// TODO: 404 NOT FOUND MESSAGE?
 	}
 
-	char *buf = new char[MAX_MSG_SIZE];
+	char buf[MAX_MSG_SIZE];
 	bool going = true;
+	bool hasbuf = false;
 	while (going) {
-		reader.read(buf, MAX_MSG_SIZE);
 		int len = MAX_MSG_SIZE;
-		if (!reader) {
-			len = (int)reader.gcount();
-			going = false;
+		if (!hasbuf) {
+			reader.read(buf, MAX_MSG_SIZE);
+			if (!reader) {
+				len = (int)reader.gcount();
+				going = false;
+			}
+			hasbuf = true;
 		}
-		vector<int> flags(3);
-		Packet send(0, current_seq, MAX_MSG_SIZE, flags, buf);
-		sendPacket(send);
+		if (WINDOW_SIZE - winduse >= len) {
+			vector<int> flags(3);
+			Packet *send = new Packet(0, current_seq, MAX_MSG_SIZE, flags, buf);
+			sendPacket(*send);
+			unacked.push(send);
+			sendtime.push(chrono::steady_clock::now());
+			winduse += len;
+			hasbuf = false;
+		}
+		if (/*oldest in window has timed out*/) { // TODO: check age of oldest (also see if window has to be consecutive)
+			Packet *resend = unacked.pop();
+			sendPacket(*resend);
+			unacked.push(resend);
+			sendtime.pop();
+			sendtime.push(chrono::steady_clock::now());
+		}
 
-		Packet rec;
+		Packet rec; // TODO: ack
 		receivePacket(rec);
 		free(rec.m_message);
 		current_seq += len;
