@@ -81,7 +81,7 @@ void TCP_server::handshake() {
   while(1) {
     Packet rec;
     receivePacket(rec);
-	free(rec.m_message)
+	free(rec.m_message);
 
     if (rec.m_flags[1] != 1) continue;
 
@@ -194,15 +194,16 @@ void TCP_server::readFile() {
 
 			first_seq = INT_MAX;
 			for (int i = 0; i < unacked.size(); i++) { // remove the acked packet from the window and update first_seq
-				if (unacked.front().m_seq == rec.m_ack) {
+				if (unacked.front()->m_seq == rec.m_ack) {
 					delete unacked.front();
 					unacked.pop();
 					sendtime.pop();
 				}
 				else {
-					first_seq = min(first_seq, unacked.front().m_seq);
-					unacked.push(unacked.pop());
-					sendtime.push(sendtime.pop());
+					first_seq = min(first_seq, unacked.front()->m_seq);
+					unacked.push(unacked.front());
+					unacked.pop();
+					sendtime.push(sendtime.front());
 				}
 			}
 		}
@@ -210,13 +211,14 @@ void TCP_server::readFile() {
 		// age of the oldest unacked packet
 		chrono::milliseconds age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front());
 		while (age.count() >= 500) { // resend all timed-out packets
-			Packet *resend = unacked.pop();
+			Packet *resend = unacked.front();
+			unacked.pop();
 			sendPacket(*resend, WINDOW_SIZE, true);
 			unacked.push(resend);
 			sendtime.pop();
 			sendtime.push(chrono::steady_clock::now());
 
-			age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front())
+			age = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - sendtime.front());
 		}
 	}
 	// FIN
@@ -241,7 +243,7 @@ void TCP_server::readFile() {
 	reader.close();
 }
 
-void TCP_server::sendPacket(Packet p, int wnd = 5120, bool retransmit = false) {
+void TCP_server::sendPacket(Packet p, int wnd, bool retransmit) {
   displayMessage("sending", p, wnd, retransmit);
   sendto(serv_fd, p.m_raw, MAX_PACKET_SIZE, 0, (struct sockaddr *)&cli_addr, sizeof(cli_addr));
 }
@@ -263,7 +265,7 @@ void TCP_server::receivePacket(Packet& p) {
   displayMessage("receiving", p);
 }
 
-void TCP_server::displayMessage(string dest, Packet p, int wnd = 5120, bool retransmit = false) {
+void TCP_server::displayMessage(string dest, Packet p, int wnd, bool retransmit) {
   if (dest == "sending") {
     cout << "Sending packet " << p.m_seq << " " << wnd << " ";
 
