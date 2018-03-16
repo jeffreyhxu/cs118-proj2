@@ -1,5 +1,6 @@
 ./server 8000
 ./client 127.0.0.1 8000 test.txt
 
-We still need to seperate a large file into a large number of packets, and do the sliding window stuff. 
-The framework, for the most part, should be done however.
+Large file transmission works. The bad news is when I used lnxsrv to try netem to try packet loss, it turns out something
+is not supported by the version of glibc on lnxsrv. I'm guessing it's chrono, since every other library I'm pretty sure
+I've used on lnxsrv before. When I wake up, I'm gonna rework it to use time.h instead of chrono.
