@@ -1,8 +1,9 @@
 ./server [port]
 ./client [hostname] [port] [filename]
 
-Andrew   Koeswanto  _________
+Andrew   Koeswanto  304785991
 Jeffrey  Xu         404768745
 group number
 
+Andrew: General infrastructure and packet header, small file transferrance, and report.
 description of how we split the work
