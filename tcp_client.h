@@ -24,10 +24,11 @@ public:
 
 private:
   void createSocket();
-  void sendPacket(Packet p);
+  void sendPacket(Packet p, bool retransmit = false);
   void receivePacket(Packet& p);
   void displayMessage(string dest, Packet p, int wnd = 5120, bool retransmit = false);
   void consolidate(map<int, char *>& buf, int lastlen, int lastseq);
+  long long timeSince(struct timespec then);
 
   char* hostname;
   unsigned short portnum;

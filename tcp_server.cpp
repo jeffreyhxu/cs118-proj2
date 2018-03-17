@@ -48,7 +48,7 @@ TCP_server::~TCP_server() {
 }
 
 void TCP_server::createSocket() {
-  cout << "Socket created..." << endl;
+  //* cout << "Socket created..." << endl;
 
   serv_fd = socket(AF_INET, SOCK_DGRAM, 0);  // create socket
   if (serv_fd < 0)
@@ -67,7 +67,7 @@ void TCP_server::createSocket() {
 }
 
 void TCP_server::startServer() {
-  cout << "Server started..." << endl;
+  //* cout << "Server started..." << endl;
   while(1) {
     handshake();
 
@@ -76,7 +76,7 @@ void TCP_server::startServer() {
 }
 
 void TCP_server::handshake() {
-  cout << "AWAITING HANDSHAKE" << endl << endl;
+  //* cout << "AWAITING HANDSHAKE" << endl << endl;
 
   while(1) {
     Packet rec;
@@ -105,7 +105,7 @@ void TCP_server::handshake() {
         receivePacket(rec);
 
         if (rec.m_flags[0] != 1 || rec.m_ack != INITIAL_SEQ_NUM) { // The current implementation of ACK in tcp_client uses the seq num as
-          cout << "INVALID RESPONSE TO SYNACK" << endl;            // the ack num instead of its successor, which makes sense if we're not
+          //* cout << "INVALID RESPONSE TO SYNACK" << endl;        // the ack num instead of its successor, which makes sense if we're not
           continue;                                                // doing the TCP-style blend of GBN and SR.
         }
 
@@ -126,7 +126,7 @@ void TCP_server::handshake() {
     break;
   }
 
-  cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
+  //* cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
 }
 
 void TCP_server::readFile() {
@@ -138,10 +138,10 @@ void TCP_server::readFile() {
   fds[0].events = POLLIN;
   
   if (!reader) {
-    cout << "INVALID FILEPATH" << endl;
+    //* cout << "INVALID FILEPATH" << endl;
     char buf404[MAX_MSG_SIZE] = "404";  // 404 will be signified by a FIN packet with non-zero length.
     vector<int> flags404(3);
-    flags404[1] = 1;
+    flags404[2] = 1;
     Packet send404(0, current_seq, 4, flags404, buf404);
     sendPacket(send404);
     
@@ -154,7 +154,7 @@ void TCP_server::readFile() {
         free(rec.m_message);
         break;
       }
-      if (timeSince(time404) >= 1000) {
+      if (timeSince(time404) >= 500) {
         sendPacket(send404, WINDOW_SIZE, true);
         clock_gettime(CLOCK_MONOTONIC, &time404);
       }
@@ -164,16 +164,20 @@ void TCP_server::readFile() {
   }
 
   char buf[MAX_MSG_SIZE];
+  int len = MAX_MSG_SIZE;
   bool filedone = false;
   bool hasbuf = false;
+
+  struct timespec begin;
+  clock_gettime(CLOCK_MONOTONIC, &begin);
   
   while (!filedone || !unacked.empty()) {
-    int len = MAX_MSG_SIZE;
-    if (!hasbuf) { // prepare the next block of data
+    if (!hasbuf && !filedone) { // prepare the next block of data 
       reader.read(buf, MAX_MSG_SIZE);
+      len = MAX_MSG_SIZE;
       if (!reader) {
         len = (int)reader.gcount();
-	//cout << "lastlen: " << len << endl;
+	//cout << "lastlen: " << len << " in packet " << current_seq << endl;
 	filedone = true;
       }
       hasbuf = true;
@@ -193,7 +197,7 @@ void TCP_server::readFile() {
       hasbuf = false;
     }
     
-    if (poll(fds, 1, 1) > 0) { // check to see if an ACK has arrived but don't wait up
+    if (poll(fds, 1, 0) > 0) { // check to see if an ACK has arrived but don't wait up
       Packet rec;
       receivePacket(rec);
       free(rec.m_message);
@@ -210,6 +214,7 @@ void TCP_server::readFile() {
           unacked.push(unacked.front());
           unacked.pop();
           sendtime.push(sendtime.front());
+	  sendtime.pop();
         }
       }
     }
@@ -217,16 +222,19 @@ void TCP_server::readFile() {
     if (unacked.empty()) {
       continue;
     }
-    
-    while (timeSince(sendtime.front()) >= 500) { // resend all timed-out packets, starting with oldest
+
+    if (timeSince(sendtime.front()) >= 500) { // resend all timed-out packets, starting with oldest
+      //cout << timeSince(sendtime.front()) << " old at time " << timeSince(begin) << endl;
       Packet *resend = unacked.front();
       unacked.pop();
       sendPacket(*resend, WINDOW_SIZE, true);
       unacked.push(resend);
       sendtime.pop();
       struct timespec newsent;
-	  clock_gettime(CLOCK_MONOTONIC, &newsent);
+      clock_gettime(CLOCK_MONOTONIC, &newsent);
       sendtime.push(newsent);
+      //cout << timeSince(newsent) << " now, and in q " << unacked.size();
+      //cout << " " << sendtime.size() << endl;
     }
   }
   // FIN
@@ -242,9 +250,12 @@ void TCP_server::readFile() {
       Packet rec;
       receivePacket(rec);
       free(rec.m_message);
-      break;
+
+      if(rec.m_flags[0] == 1 && rec.m_flags[2] == 1 && rec.m_ack == current_seq){
+	break;
+      }
     }
-    if (timeSince(fintime) >= 1000) {
+    if (timeSince(fintime) >= 500) {
       sendPacket(fin);
       clock_gettime(CLOCK_MONOTONIC, &fintime);
     }

@@ -41,13 +41,13 @@ Packet::Packet(char raw[]) {
   m_message = (char*)malloc(1016);  // This does not get deallocated by a destructor because we need to hold onto it after the Packet
   memcpy(m_message, m_raw+8, 1016); // is freed to buffer messages. This means we have to keep track of it and free it elsewhere.
 
-  m_ack = 0 | m_header[0];
+  m_ack = 0 | (unsigned char)m_header[0];
   m_ack = (m_ack << 8) + ((unsigned char)m_header[1]);
 
-  m_seq = 0 | m_header[2];
+  m_seq = 0 | (unsigned char)m_header[2];
   m_seq = (m_seq << 8) + ((unsigned char)m_header[3]);
 
-  m_len = 0 | m_header[4];
+  m_len = 0 | (unsigned char)m_header[4];
   m_len = (m_len << 8) + ((unsigned char)m_header[5]);
 
   m_flags.resize(8);

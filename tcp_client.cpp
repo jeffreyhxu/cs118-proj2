@@ -6,6 +6,8 @@
 #include <cstring>
 #include <vector>
 #include <map>
+#include <time.h>
+#include <poll.h>
 
 #include <unistd.h>
 
@@ -38,7 +40,7 @@ TCP_client::~TCP_client() {
 }
 
 void TCP_client::createSocket() {
-  cout << "Socket created..." << endl;
+  //* cout << "Socket created..." << endl;
 
   serv_fd = socket(AF_INET, SOCK_DGRAM, 0);  // create socket
   if (serv_fd < 0)
@@ -72,22 +74,48 @@ void TCP_client::sendMessage() {
       char finbuf[MAX_MSG_SIZE] = "FINACK";
       Packet finack(rec.m_seq, 0, 0, finflags, finbuf);
       sendPacket(finack);
+      
+      struct timespec timed_wait;
+      clock_gettime(CLOCK_MONOTONIC, &timed_wait);
+      struct pollfd fds[1];
+      fds[0].fd = serv_fd;
+      fds[0].events = POLLIN;
+      while(timeSince(timed_wait) < 1000){
+	if(poll(fds, 1, 1) > 0){
+	  receivePacket(rec);
+	  sendPacket(finack, true);
+	}
+      }
       break;
+    }
+    else if (rec.m_flags[0] == 1 && rec.m_flags[1] == 1) { // SYNACK
+      free(rec.m_message);
+      vector<int> reqflags(3);
+      reqflags[0] = 1;
+      char reqbuf[MAX_MSG_SIZE];
+      strcpy(reqbuf, filepath);
+
+      Packet req(rec.m_seq, 0, strlen(filepath), reqflags, reqbuf);
+      sendPacket(req, true);
+      continue;
     }
     //cout << rec.m_message << endl;
 
-    recbuf[rec.m_seq] = rec.m_message;
+    bool already_had = true;
+    if(recbuf.find(rec.m_seq) == recbuf.end()){
+      already_had = false;
+      recbuf[rec.m_seq] = rec.m_message;
+    }
     if (rec.m_seq > lastseq) {
       lastseq = rec.m_seq;
       lastlen = rec.m_len;
     }
 
     vector<int> flags(3);
-    flags[0] = 1;
-    char buf[MAX_MSG_SIZE] = "ACK";
-
-    Packet ack(rec.m_seq, 0, 0, flags, buf); // ACK num is equal to seq num rather than being the next expected byte. Next expected byte
-    sendPacket(ack);                         // lends itself more easily to GBN or the hybrid of GBN and SR used by TCP.
+    flags[0] = 1; // We'll reuse the filepath as the message because it
+                  // won't be looked at anyways.
+    Packet ack(rec.m_seq, 0, 0, flags, filepath); // ACK num is equal to seq num rather than being the next expected byte. Next expected byte
+    sendPacket(ack, already_had);                 // lends itself more easily to GBN or the hybrid of GBN and SR used by TCP.
   }
 
   close(serv_fd);
@@ -100,27 +128,39 @@ void TCP_client::sendMessage() {
 }
 
 void TCP_client::handshake() {
-  cout << "PREPARING HANDSHAKE" << endl << endl;
+  //* cout << "PREPARING HANDSHAKE" << endl << endl;
 
   vector<int> flags(3);
   flags[1] = 1;                           //SYN
   char buf[MAX_MSG_SIZE] = "SYN";
 
   Packet send(0, 0, 0, flags, buf);
+  sendPacket(send);
+  struct timespec syntime;
+  clock_gettime(CLOCK_MONOTONIC, &syntime);
+  
   Packet rec;
+  struct pollfd fds[1];
+  fds[0].fd = serv_fd;
+  fds[0].events = POLLIN;
 
   while(1) {
-    sendPacket(send);
+    if(poll(fds, 1, 1) > 0){
+      receivePacket(rec);
+      free(rec.m_message);
 
-    receivePacket(rec);
-	free(rec.m_message);
+      if (rec.m_flags[0] != 1 || rec.m_flags[1] != 1) {
+	//* cout << "SYNCHRONIZATION HANDSHAKE FAILED" << endl;
+	continue;
+      }
 
-    if (rec.m_flags[0] != 1 || rec.m_flags[1] != 1) {
-      cout << "SYNCHRONIZATION HANDSHAKE FAILED" << endl;
-      continue;
+      break;
     }
 
-    break;
+    if(timeSince(syntime) >= 500){
+      sendPacket(send, true);
+      clock_gettime(CLOCK_MONOTONIC, &syntime);
+    }
   }
 
   flags[1] = 0;
@@ -130,11 +170,11 @@ void TCP_client::handshake() {
   send = Packet(rec.m_seq, 0, strlen(filepath), flags, buf);
   sendPacket(send);
 
-  cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
+  //* cout << endl << "HANDSHAKE SUCCESSFUL" << endl;
 }
 
-void TCP_client::sendPacket(Packet p) {
-  displayMessage("sending", p);
+void TCP_client::sendPacket(Packet p, bool retransmit) {
+  displayMessage("sending", p, 5120, retransmit);
   sendto(serv_fd, p.m_raw, 1024, 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 }
 
@@ -157,13 +197,8 @@ void TCP_client::receivePacket(Packet& p) {
 
 void TCP_client::displayMessage(string dest, Packet p, int wnd, bool retransmit) {
   if (dest == "sending") {
-    if (p.m_ack == 0 && p.m_flags[1]) {
-      cout << "Sending packet SYN" << endl;
-      return;
-    }
-
-    cout << "Sending packet " << p.m_ack << " ";
-
+    cout << "Sending packet ";
+    if (p.mflags[1] != 1) << p.m_ack << " ";
     if (retransmit) cout << "Retransmission" << " ";
     if (p.m_flags[1]) cout << "SYN" << " ";
     if (p.m_flags[2]) cout << "FIN" << " ";
@@ -182,9 +217,19 @@ void TCP_client::consolidate(map<int, char *>& buf, int lastlen, int lastseq) {
   ofstream writer("received.data", ios::out | ios::binary);
 
   for (map<int, char *>::iterator it = buf.begin(); it != buf.end(); ++it) {
+    //cout << (*it).first << endl;
     writer.write((*it).second, (*it).first == lastseq ? lastlen : MAX_MSG_SIZE);
   }
-  cout << "lastlen: " << lastlen << endl;
 
+  //cout << "seq: " << lastseq << endl;
+  //cout << "len: " << lastlen << endl;
+  //cout << "packets: " << buf.size() << endl;
+  
   writer.close();
+}
+
+long long TCP_client::timeSince(struct timespec then){
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return ((now.tv_sec - then.tv_sec) * 1000000000 + now.tv_nsec - then.tv_nsec)/1000000;
 }
