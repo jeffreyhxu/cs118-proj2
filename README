@@ -1,9 +1,9 @@
 ./server [port]
 ./client [hostname] [port] [filename]
 
+Group 53
 Andrew   Koeswanto  304785991
 Jeffrey  Xu         404768745
-group number
 
-Andrew: General infrastructure and packet header, small file transferrance, and report.
-description of how we split the work
+Andrew:  General infrastructure, packet header, small file transfer, connection setup, handshake, and report.
+Jeffrey: Large file transfer, closing connection, sliding window, timeouts and retransmission, and debugging.
