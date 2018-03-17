@@ -1,6 +1,8 @@
-./server 8000
-./client 127.0.0.1 8000 test.txt
+./server [port]
+./client [hostname] [port] [filename]
 
-Large file transmission works. The bad news is when I used lnxsrv to try netem to try packet loss, it turns out something
-is not supported by the version of glibc on lnxsrv. I'm guessing it's chrono, since every other library I'm pretty sure
-I've used on lnxsrv before. When I wake up, I'm gonna rework it to use time.h instead of chrono.
+Andrew   Koeswanto  _________
+Jeffrey  Xu         404768745
+group number
+
+description of how we split the work
