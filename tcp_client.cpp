@@ -198,7 +198,7 @@ void TCP_client::receivePacket(Packet& p) {
 void TCP_client::displayMessage(string dest, Packet p, int wnd, bool retransmit) {
   if (dest == "sending") {
     cout << "Sending packet ";
-    if (p.mflags[1] != 1) << p.m_ack << " ";
+    if (p.m_flags[1] != 1) cout << p.m_ack << " ";
     if (retransmit) cout << "Retransmission" << " ";
     if (p.m_flags[1]) cout << "SYN" << " ";
     if (p.m_flags[2]) cout << "FIN" << " ";
